@@ -23,4 +23,10 @@ final class JoinedEditOrdersTable extends \Livewire\Component
     {
         return Order::query()->orderBy('id');
     }
+
+    /** The test app has no policies: whoever sees the table may edit. */
+    protected function editableWithoutPolicy(): bool
+    {
+        return true;
+    }
 }

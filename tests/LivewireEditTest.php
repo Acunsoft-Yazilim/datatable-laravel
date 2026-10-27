@@ -77,6 +77,31 @@ final class LivewireEditTest extends TestCase
         Livewire::test(EditOrdersTable::class)->instance()->updateCell('1', 'customer', 'Nope');
     }
 
+    public function test_without_a_policy_nobody_edits_unless_the_table_says_so(): void
+    {
+        $table = new class extends \Livewire\Component {
+            use \Acunsoft\DataTable\Laravel\Livewire\WithDataTable;
+
+            protected function columns(): array
+            {
+                return [Column::make('customer')->editable()];
+            }
+
+            protected function query(): \Illuminate\Database\Eloquent\Builder
+            {
+                return Order::query();
+            }
+        };
+        try {
+            $table->updateCell('1', 'customer', 'Changed');
+            self::fail('edited without a policy');
+        } catch (AuthorizationException $error) {
+            self::assertStringContainsString('editableWithoutPolicy()', $error->getMessage());
+        }
+        self::assertNotSame('Changed', Order::query()->find(1)?->customer);
+        self::assertTrue(Livewire::test(EditOrdersTable::class)->instance()->updateCell('1', 'customer', 'Allowed')); // the fixture opts in
+    }
+
     public function test_edit_rules_combine_type_options_and_extra_rules(): void
     {
         self::assertSame(['required', 'string', 'max:40'], Column::make('a')->editable(['required', 'max:40'])->editRules());

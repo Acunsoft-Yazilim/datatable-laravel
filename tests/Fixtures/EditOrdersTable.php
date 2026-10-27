@@ -26,4 +26,10 @@ final class EditOrdersTable extends \Livewire\Component
     {
         return Order::query()->where('id', '<=', 3)->orderBy('id');
     }
+
+    /** The test app has no policies: whoever sees the table may edit. */
+    protected function editableWithoutPolicy(): bool
+    {
+        return true;
+    }
 }

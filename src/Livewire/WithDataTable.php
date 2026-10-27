@@ -855,8 +855,8 @@ trait WithDataTable
 
     /**
      * Save a cell edited in place (columns with `editable()`). The row is
-     * looked up inside `query()`; the model's policy must allow `update` when
-     * there is one (`authorizeEdit()`); the value is validated against the
+     * looked up inside `query()`; the model's policy must allow `update`
+     * (`authorizeEdit()`; without one, `editableWithoutPolicy()`); the value is validated against the
      * column (`Column::editRules()`), and a failure shows next to the field.
      * Returns whether it was saved.
      */
@@ -919,12 +919,30 @@ trait WithDataTable
         $row->save();
     }
 
-    /** Throws when the user may not edit this row: the model's policy `update` ability, when one exists. */
+    /**
+     * Throws when the user may not edit this row: the model's policy must
+     * allow `update`. Without a policy nobody may edit (anyone who can see
+     * the table could otherwise change every editable cell), unless
+     * `editableWithoutPolicy()` says so. Override for other checks.
+     */
     protected function authorizeEdit(mixed $row, Column $column): void
     {
         if (is_object($row) && \Illuminate\Support\Facades\Gate::getPolicyFor($row) !== null) {
             \Illuminate\Support\Facades\Gate::authorize('update', $row);
+
+            return;
         }
+        if (! $this->editableWithoutPolicy()) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Editing needs a policy with update() for '.(is_object($row) ? $row::class : 'these rows').', or editableWithoutPolicy() returning true.'
+            );
+        }
+    }
+
+    /** Whether rows without a model policy may be edited by whoever sees the table. Default `false`. */
+    protected function editableWithoutPolicy(): bool
+    {
+        return false;
     }
 
     /** The text an editor starts with: decimals as written, dates as `Y-m-d`, date-times as `Y-m-d\TH:i`. */

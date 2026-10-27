@@ -320,8 +320,9 @@ Column::make('status')->header('Durum')->options(['new' => 'Yeni', 'paid' => 'Ö
 
 The cell gets an edit button (and a double click) with an editor for its type;
 Enter or leaving the field calls `updateCell()`. On the server the row is
-looked up inside `query()`, the model's policy must allow `update` (when it
-has one), and the value is validated against the type, `options()` and your
+looked up inside `query()`, the model's policy must allow `update` (a model
+without a policy is not editable unless `editableWithoutPolicy()` returns
+`true`), and the value is validated against the type, `options()` and your
 rules (`nullable` unless `required`; a decimal comma is accepted); an error
 keeps the editor open with the message. `saveCell()` then sets only that
 column's attribute and saves the model; override it for query-builder rows or
