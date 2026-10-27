@@ -52,6 +52,14 @@ final class OrdersTable extends Component
     /** Lets a test switch the bulk action off, as an app would per permission. */
     public bool $canArchive = true;
 
+    /** The most rows chosen at once (the trait's default is 1000). */
+    public int $maxRows = 1000;
+
+    protected function maxSelected(): int
+    {
+        return $this->maxRows;
+    }
+
     protected function rowActions(): array
     {
         return [

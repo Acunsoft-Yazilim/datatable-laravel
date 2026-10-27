@@ -986,9 +986,10 @@ trait WithDataTable
     {
         $key = (string) $key;
         if ($this->allMatching) {
+            // Any key the browser sends: kept short and at most maxSelected(), as the selection is.
             $this->excluded = in_array($key, $this->excluded, true)
                 ? array_values(array_diff($this->excluded, [$key]))
-                : [...$this->excluded, $key];
+                : self::distinctKeys([...$this->excluded, $key], $this->maxSelected());
 
             return;
         }
@@ -1016,7 +1017,7 @@ trait WithDataTable
         if ($this->allMatching) {
             $this->excluded = $select
                 ? array_values(array_diff($this->excluded, $range))
-                : array_values(array_unique([...$this->excluded, ...$range]));
+                : self::distinctKeys([...$this->excluded, ...$range], $this->maxSelected());
 
             return;
         }
@@ -1033,7 +1034,7 @@ trait WithDataTable
         $all = $keys !== [] && array_reduce($keys, fn (bool $carry, string $key) => $carry && $this->isSelected($key), true);
         if ($this->allMatching) {
             $this->excluded = $all
-                ? array_values(array_unique([...$this->excluded, ...$keys]))
+                ? self::distinctKeys([...$this->excluded, ...$keys], $this->maxSelected())
                 : array_values(array_diff($this->excluded, $keys));
 
             return;

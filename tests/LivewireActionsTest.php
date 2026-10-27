@@ -74,6 +74,19 @@ final class LivewireActionsTest extends TestCase
         self::assertSame([1], Order::query()->where('note', 'archived')->pluck('id')->all());
     }
 
+    public function test_rows_taken_out_of_every_matching_row_are_bounded_like_the_selection(): void
+    {
+        $table = Livewire::test(OrdersTable::class, ['maxRows' => 3])->call('selectAllMatching');
+        $table->call('toggleRow', str_repeat('x', 65)); // longer than any key
+        self::assertSame([], $table->get('excluded'));
+        for ($i = 0; $i < 5; $i++) {
+            $table->call('toggleRow', "k{$i}");
+        }
+        self::assertSame(['k0', 'k1', 'k2'], $table->get('excluded')); // maxSelected(), not every key the browser sends
+        $table->call('toggleRow', 'k3');
+        self::assertNotContains('k3', $table->get('excluded')); // taking it back still works
+    }
+
     public function test_bulk_actions_need_a_selection_and_must_be_visible(): void
     {
         Livewire::test(OrdersTable::class)->call('runBulkAction', 'archive'); // nothing selected
