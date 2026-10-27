@@ -42,6 +42,19 @@ final class PostgresCountTest extends TestCase
         self::assertSame([500, true], QueryApplier::count(DB::connection('pg')->table('adt_count_test')->where('n', '<=', 500), 1000, 1));
     }
 
+    public function test_a_distinct_join_counts_its_distinct_rows_on_both_paths(): void
+    {
+        $pg = DB::connection('pg');
+        $pg->statement('create temporary table adt_count_lines as select n % 1000 as order_id from generate_series(1, 3000) as n'); // three lines each
+        $distinct = fn () => $pg->table('adt_count_test')->select('adt_count_test.n')
+            ->join('adt_count_lines', 'adt_count_lines.order_id', '=', 'adt_count_test.n')->distinct(); // n = 1 … 999
+        self::assertSame(999, $distinct()->get()->count());
+        self::assertSame([999, true], QueryApplier::count($distinct(), 10_000));
+        self::assertSame([500, false], QueryApplier::count($distinct(), 500, null));
+        self::assertSame([999, true], QueryApplier::count($distinct(), 500, 5000)); // the exact count within its time limit
+        self::assertSame([999, true], QueryApplier::count($distinct(), null));
+    }
+
     public function test_falls_back_to_the_lower_bound_and_remembers_slow_queries(): void
     {
         $pg = DB::connection('pg');

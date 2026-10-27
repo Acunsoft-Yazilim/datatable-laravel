@@ -302,7 +302,7 @@ final class QueryApplier
     {
         $base = $builder instanceof EloquentBuilder ? $builder->toBase() : $builder;
         if ($limit === null) {
-            return [(clone $base)->getCountForPagination(), true];
+            return [self::exactCount($base), true];
         }
         if ($limit < 1) {
             throw new \InvalidArgumentException('The count limit must be at least 1, or null.');
@@ -310,9 +310,12 @@ final class QueryApplier
         if ($timeoutMs !== null && $timeoutMs < 1) {
             throw new \InvalidArgumentException('The count timeout must be at least 1 ms, or null.');
         }
-        $probe = (clone $base)->reorder()->limit($limit + 1)->offset(0);
-        $probe->columns = null;
-        $counted = $base->newQuery()->fromSub($probe->selectRaw('1 as adt_match'), 'adt_matches')->count();
+        $probe = self::countable($base)->limit($limit + 1)->offset(0);
+        if (! self::rowsFollowColumns($base)) {
+            $probe->columns = null;
+            $probe->selectRaw('1 as adt_match');
+        }
+        $counted = $base->newQuery()->fromSub($probe, 'adt_matches')->count();
         if ($counted <= $limit) {
             return [$counted, true];
         }
@@ -371,6 +374,43 @@ final class QueryApplier
         return $totals;
     }
 
+    /**
+     * Whether the rows a query returns depend on its select list: `distinct`,
+     * `having` and unions. Those are counted with their columns, as a subquery;
+     * others as `count(*)`. (Laravel's own getCountForPagination() counts a
+     * `distinct()` query as `count(*)`, duplicates included.)
+     */
+    private static function rowsFollowColumns(QueryBuilder $base): bool
+    {
+        return (bool) $base->distinct || ! empty($base->havings) || ! empty($base->unions);
+    }
+
+    /**
+     * The query without its order (a count needs none). Its columns stay as
+     * they are, so the count matches the rows the table shows; select the
+     * columns of a joined `distinct()` query (`->select('orders.*')`), as MySQL
+     * and SQL Server refuse a subquery with two columns of the same name.
+     */
+    private static function countable(QueryBuilder $base): QueryBuilder
+    {
+        $query = (clone $base)->reorder();
+        if ($query->unions) {
+            $query->unionOrders = [];
+            $query->bindings['unionOrder'] = [];
+        }
+
+        return $query;
+    }
+
+    private static function exactCount(QueryBuilder $base): int
+    {
+        if (! self::rowsFollowColumns($base)) {
+            return (clone $base)->getCountForPagination();
+        }
+
+        return $base->newQuery()->fromSub(self::countable($base), 'adt_matches')->count();
+    }
+
     /** An exact count, or null when the database cannot finish it within `$ms`. */
     private static function countWithin(QueryBuilder $base, int $ms): ?int
     {
@@ -384,7 +424,7 @@ final class QueryApplier
         if ($cache?->has($slow)) {
             return null;
         }
-        $count = fn (): int => (clone $base)->getCountForPagination();
+        $count = fn (): int => self::exactCount($base);
         try {
             if ($driver === 'pgsql') {
                 // In a (nested) transaction, so a cancelled statement only rolls back its own savepoint.

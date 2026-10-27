@@ -195,7 +195,8 @@ final class TableExport
             $rebuilt = $rebuilt->withSearchKeys($query->searchKeys, $query->searchKeyColumn); // the engine's answer, as on screen
         }
         $builder = QueryApplier::apply(clone $this->builder, $rebuilt, $this->queryColumns ?? $this->columns);
-        if ((clone $builder)->limit($this->limit + 1)->count() > $this->limit) {
+        // Stops after limit + 1 rows (a plain count() ignores the limit and counts every row).
+        if (! QueryApplier::count($builder, $this->limit, null)[1]) {
             throw InvalidTableQuery::at('export', __('acun-datatable::table.export_too_large', ['max' => $this->limit]));
         }
         if ($builder instanceof QueryBuilder && $builder->orders === null) {
