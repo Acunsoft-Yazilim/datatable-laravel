@@ -652,7 +652,8 @@ abstract class TableImport
 
     /**
      * The start check of the protocol (never trusting the UI): one entry per
-     * header, known columns at most once, every required column, an offered mode.
+     * header, known columns at most once, every required column (and the
+     * import key to update or upsert), an offered mode.
      *
      * @param list<string> $headers
      * @return array<string, string>
@@ -661,6 +662,14 @@ abstract class TableImport
     {
         $problems = [];
         $mapping = is_array($body) ? ($body['mapping'] ?? null) : null;
+        $offered = $this->offeredModes();
+        $mode = is_array($body) ? ($body['mode'] ?? null) : null;
+        // Updating finds the existing records by the import key: it must be matched too.
+        $required = $this->required();
+        $key = $this->importKey();
+        if ($key !== null && ($mode ?? $offered[0]) !== 'insert' && ! in_array($key, $required, true)) {
+            $required[] = $key;
+        }
         if (! is_array($mapping) || ! array_is_list($mapping) || count($mapping) !== count($headers)) {
             $problems['mapping'] = __('acun-datatable::table.import_mapping_length', ['count' => count($headers)]);
         } else {
@@ -683,13 +692,11 @@ abstract class TableImport
                 }
                 $seen[$entry] = true;
             }
-            $missing = array_values(array_filter($this->required(), fn (string $id) => ! isset($seen[$id])));
+            $missing = array_values(array_filter($required, fn (string $id) => ! isset($seen[$id])));
             if (! isset($problems['mapping']) && $missing !== []) {
                 $problems['mapping'] = __('acun-datatable::table.import_required_columns', ['columns' => implode(', ', array_map(fn ($id) => $known[$id] ?? $id, $missing))]);
             }
         }
-        $offered = $this->offeredModes();
-        $mode = is_array($body) ? ($body['mode'] ?? null) : null;
         if ($mode === null && count($offered) > 1) {
             $problems['mode'] = __('acun-datatable::table.import_choose_mode', ['modes' => implode(', ', $offered)]);
         } elseif ($mode !== null && (! is_string($mode) || ! in_array($mode, $offered, true))) {

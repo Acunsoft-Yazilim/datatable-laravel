@@ -39,6 +39,7 @@ final class TableImportTest extends TestCase
         \Illuminate\Support\Facades\Schema::create('users', fn (\Illuminate\Database\Schema\Blueprint $table) => $table->id());
         \Illuminate\Support\Facades\DB::table('users')->insert([['id' => 5], ['id' => 6]]);
         OrdersImport::$queueFrom = PHP_INT_MAX;
+        OrdersImport::$requiredColumns = ['customer'];
         OrdersImport::$maxKilobytes = 64;
         $this->actingAs(new GenericUser(['id' => 5]));
     }
@@ -146,6 +147,17 @@ final class TableImportTest extends TestCase
         $this->postJson(self::URL."/{$id}/start", $body)->assertOk()->assertJson(['status' => 'done', 'inserted' => 3]);
         $this->postJson(self::URL."/{$id}/start", $body)->assertStatus(409); // once started, never again
         self::assertSame(3, Order::query()->where('customer', 'like', 'New %')->count());
+    }
+
+    public function test_update_and_upsert_need_the_import_key_matched_insert_does_not(): void
+    {
+        OrdersImport::$requiredColumns = []; // the key column is not required as such
+        $id = $this->upload($this->csv("Customer,Total\nAli Kaya,3"))->json('id');
+        foreach (['update', 'upsert'] as $mode) {
+            $this->postJson(self::URL."/{$id}/start", ['mapping' => [null, 'total'], 'mode' => $mode])
+                ->assertStatus(422)->assertJsonPath('errors.mapping', 'Match the required columns: Customer.');
+        }
+        $this->postJson(self::URL."/{$id}/start", ['mapping' => [null, 'total'], 'mode' => 'insert'])->assertOk();
     }
 
     public function test_insert_refuses_existing_rows_and_update_skips_new_ones(): void

@@ -33,9 +33,12 @@ final class OrdersImport extends TableImport
         return $request->header('X-Deny') === null;
     }
 
+    /** @var list<string> */
+    public static array $requiredColumns = ['customer'];
+
     protected function required(): array
     {
-        return ['customer'];
+        return self::$requiredColumns;
     }
 
     protected function importKey(): ?string
