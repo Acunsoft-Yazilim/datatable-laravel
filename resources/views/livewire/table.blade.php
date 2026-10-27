@@ -117,7 +117,7 @@
                 <thead>
                     <tr>
                         @if ($expandable)
-                            <td class="adt-expand-cell"></td>
+                            <td class="adt-expand-cell"><span class="adt-sr-only">{{ $this->tableText('details_column') }}</span></td>
                         @endif
                         @if ($selectable)
                             <th scope="col" class="adt-select">
@@ -146,7 +146,7 @@
                                     <button type="button"
                                         class="adt-sort{{ $rule ? ' adt-sort--'.$rule['direction'] : '' }}"
                                         wire:click="sortBy({{ \Illuminate\Support\Js::from($column->id()) }}, $event.shiftKey)">
-                                        {{ $column->headerText() }}<span class="adt-sort-mark" aria-hidden="true">{{ $rule ? ($rule['direction'] === 'asc' ? '▲' : '▼').(count($sorting) > 1 ? $position + 1 : '') : '' }}</span>
+                                        {{ $column->headerText() }}<span class="adt-sort-mark" aria-hidden="true">{{ $rule ? ($rule['direction'] === 'asc' ? '▲' : '▼').(count($sorting) > 1 ? $position + 1 : '') : '' }}</span>@if ($rule && count($sorting) > 1)<span class="adt-sr-only">{{ $this->tableText($rule['direction'] === 'asc' ? 'sort_order_asc' : 'sort_order_desc', ['position' => $position + 1]) }}</span>@endif
                                     </button>
                                 @else
                                     {{ $column->headerText() }}

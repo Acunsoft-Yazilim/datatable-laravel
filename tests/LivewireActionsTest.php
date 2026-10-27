@@ -96,6 +96,16 @@ final class LivewireActionsTest extends TestCase
         self::assertSame(1, substr_count($table->html(), 'role="status">1 selected'), 'read out once, not by the visible count too');
     }
 
+    public function test_screen_readers_hear_the_second_sort_and_the_details_column(): void
+    {
+        $html = Livewire::test(OrdersTable::class)->call('sortBy', 'total')->call('sortBy', 'customer', true)->html();
+        self::assertStringContainsString('<span class="adt-sr-only">sort 2, ascending</span>', $html); // aria-sort names the first only
+        self::assertStringContainsString('<span class="adt-sr-only">sort 1, ascending</span>', $html);
+        self::assertStringNotContainsString('sort 1', Livewire::test(OrdersTable::class)->call('sortBy', 'total')->html()); // one rule: aria-sort is enough
+        $detail = Livewire::test(\Acunsoft\DataTable\Laravel\Tests\Fixtures\ResponsiveOrdersTable::class, ['detail' => 'fixtures::pill'])->html();
+        self::assertStringContainsString('<td class="adt-expand-cell"><span class="adt-sr-only">Details</span></td>', $detail);
+    }
+
     public function test_bulk_actions_need_a_selection_and_must_be_visible(): void
     {
         Livewire::test(OrdersTable::class)->call('runBulkAction', 'archive'); // nothing selected
