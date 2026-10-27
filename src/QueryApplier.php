@@ -46,7 +46,7 @@ final class QueryApplier
             if (! $column->isFilterable()) {
                 throw InvalidTableQuery::at("filters.{$index}.field", "Column [{$filter['field']}] cannot be filtered.");
             }
-            self::filter($builder, $column, $filter['operator'], $filter['value'], "filters.{$index}.value");
+            self::filter($builder, $column, $filter['operator'], $filter['value'], "filters.{$index}.value", $query->timeZone);
         }
 
         $terms = $query->searchTerms();
@@ -506,7 +506,7 @@ final class QueryApplier
         return $byId;
     }
 
-    private static function filter(EloquentBuilder|QueryBuilder $builder, Column $column, string $operator, mixed $value, string $at): void
+    private static function filter(EloquentBuilder|QueryBuilder $builder, Column $column, string $operator, mixed $value, string $at, ?string $zone = null): void
     {
         $name = $column->databaseColumn();
         $textual = in_array($column->valueType(), [null, 'text'], true);
@@ -517,18 +517,18 @@ final class QueryApplier
         match ($operator) {
             'contains' => self::like($builder, $column, trim($value), false, 'and'),
             'startsWith' => self::like($builder, $column, trim($value), true, 'and'),
-            'eq' => self::compare($builder, $column, '=', $value, $at),
-            'gt' => self::compare($builder, $column, '>', $value, $at),
-            'lt' => self::compare($builder, $column, '<', $value, $at),
-            'gte' => self::compare($builder, $column, '>=', $value, $at),
-            'lte' => self::compare($builder, $column, '<=', $value, $at),
-            'between' => $builder->where(function ($group) use ($column, $value, $at): void {
-                self::compare($group, $column, '>=', $value[0], $at);
-                self::compare($group, $column, '<=', $value[1], $at);
+            'eq' => self::compare($builder, $column, '=', $value, $at, $zone),
+            'gt' => self::compare($builder, $column, '>', $value, $at, $zone),
+            'lt' => self::compare($builder, $column, '<', $value, $at, $zone),
+            'gte' => self::compare($builder, $column, '>=', $value, $at, $zone),
+            'lte' => self::compare($builder, $column, '<=', $value, $at, $zone),
+            'between' => $builder->where(function ($group) use ($column, $value, $at, $zone): void {
+                self::compare($group, $column, '>=', $value[0], $at, $zone);
+                self::compare($group, $column, '<=', $value[1], $at, $zone);
             }),
-            'in' => $builder->where(function ($group) use ($column, $value, $at): void {
+            'in' => $builder->where(function ($group) use ($column, $value, $at, $zone): void {
                 foreach ($value as $item) {
-                    $group->orWhere(fn ($one) => self::compare($one, $column, '=', $item, $at));
+                    $group->orWhere(fn ($one) => self::compare($one, $column, '=', $item, $at, $zone));
                 }
             }),
             'empty' => $builder->where(function ($group) use ($name, $textual): void {
@@ -541,7 +541,7 @@ final class QueryApplier
         };
     }
 
-    private static function compare(EloquentBuilder|QueryBuilder $builder, Column $column, string $operator, string $value, string $at): void
+    private static function compare(EloquentBuilder|QueryBuilder $builder, Column $column, string $operator, string $value, string $at, ?string $zone = null): void
     {
         $name = $column->databaseColumn();
         switch ($column->valueType()) {
@@ -569,7 +569,7 @@ final class QueryApplier
             case 'datetime':
                 if (preg_match(self::DATE_ONLY, trim($value)) === 1) {
                     // A calendar day in a datetime column means the whole day.
-                    self::dayRange($builder, $name, $operator, self::day($value, $at), 'Y-m-d H:i:s');
+                    self::dayRange($builder, $name, $operator, self::day($value, $at), 'Y-m-d H:i:s', $zone);
                 } else {
                     $builder->where($name, $operator, self::instant($value, $at));
                 }
@@ -580,19 +580,21 @@ final class QueryApplier
         }
     }
 
-    /** The calendar day as written by the client (it sends local dates), e.g. 2026-10-23. */
     /**
      * Compare with a whole calendar day as a half-open range, never as
      * `DATE(column)`: the column stays bare, so its index is used (22× faster,
      * measured on 5M PostgreSQL rows), and no database session timezone is involved.
      * `=` is [day, next day), `>` is ≥ next day, `<` is < day, `>=` is ≥ day,
-     * `<=` is < next day (also the bounds of `between`).
+     * `<=` is < next day (also the bounds of `between`). With `$zone` (the
+     * user's), the day is the one there, written in the application's zone as
+     * datetime columns are stored.
      */
-    private static function dayRange(EloquentBuilder|QueryBuilder $builder, string $name, string $operator, string $day, string $format): void
+    private static function dayRange(EloquentBuilder|QueryBuilder $builder, string $name, string $operator, string $day, string $format, ?string $zone = null): void
     {
-        $start = CarbonImmutable::createFromFormat('!Y-m-d', $day);
-        $from = $start->format($format);
-        $next = $start->addDay()->format($format);
+        $start = CarbonImmutable::createFromFormat('!Y-m-d', $day, $zone);
+        $app = $zone === null ? null : self::appZone();
+        $from = ($app === null ? $start : $start->setTimezone($app))->format($format);
+        $next = ($app === null ? $start->addDay() : $start->addDay()->setTimezone($app))->format($format);
         match ($operator) {
             '=' => $builder->where($name, '>=', $from)->where($name, '<', $next),
             '>' => $builder->where($name, '>=', $next),
@@ -602,6 +604,7 @@ final class QueryApplier
         };
     }
 
+    /** The calendar day as written by the client (it sends local dates), e.g. 2026-10-23. */
     private static function day(string $value, string $at): string
     {
         $value = trim($value);
@@ -620,9 +623,13 @@ final class QueryApplier
         } catch (Throwable) {
             throw InvalidTableQuery::at($at, "[{$value}] is not a date and time.");
         }
-        $zone = function_exists('config') ? (string) config('app.timezone', 'UTC') : 'UTC';
+        return $parsed->setTimezone(self::appZone())->format('Y-m-d H:i:s');
+    }
 
-        return $parsed->setTimezone($zone)->format('Y-m-d H:i:s');
+    /** The application's time zone, in which datetime columns are stored. */
+    private static function appZone(): string
+    {
+        return function_exists('config') ? (string) config('app.timezone', 'UTC') : 'UTC';
     }
 
     /**

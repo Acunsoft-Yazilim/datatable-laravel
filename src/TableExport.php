@@ -194,6 +194,7 @@ final class TableExport
         if ($query->searchKeys !== null) {
             $rebuilt = $rebuilt->withSearchKeys($query->searchKeys, $query->searchKeyColumn); // the engine's answer, as on screen
         }
+        $rebuilt = $rebuilt->withTimeZone($query->timeZone); // the user's days, as on screen
         $builder = QueryApplier::apply(clone $this->builder, $rebuilt, $this->queryColumns ?? $this->columns);
         // Stops after limit + 1 rows (a plain count() ignores the limit and counts every row).
         if (! QueryApplier::count($builder, $this->limit, null)[1]) {

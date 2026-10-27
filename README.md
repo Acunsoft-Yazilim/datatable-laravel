@@ -531,10 +531,13 @@ Unknown, undeclared or not-allowed fields and malformed values throw
 - **Smart search:** the `search` text is split into words, a quoted phrase is one
   term; every term must match in some searchable column. At most 10 terms.
 - **Types:** `number`/`decimal` values must be finite numbers; `boolean` reads
-  `true/false/1/0`; `date` compares days with `whereDate`; in a `datetime` column
-  a date-only value (`2026-10-23`, also how the browser sends a date picker's
-  value) means **the whole day** (`whereDate`), a value with a time is an exact
-  instant converted to `app.timezone`.
+  `true/false/1/0`; `date` compares calendar days; in a `datetime` column a
+  date-only value (`2026-10-23`, also how the browser sends a date picker's
+  value) means **the whole day**, as a range the column's index serves: the
+  day in the browser's time zone (`tz`, sent with day filters), or in
+  `->timeZone('Europe/Istanbul')` when you set one (e.g. from the user's
+  profile), else in `app.timezone`; a value with a time is an exact instant
+  converted to `app.timezone`.
 - **Sorting:** up to 5 rules (`sort=total:desc,customer:asc`); the primary key
   is added as a tie-breaker so pages are stable.
 - **Limits:** page 1–10,000,000; page size up to `maxPageSize` (≤ 1000); at most

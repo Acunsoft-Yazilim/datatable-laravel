@@ -37,6 +37,7 @@ final class TableResponse implements Responsable
     private ?Closure $searchEngine = null;
     private string $searchKeyColumn = 'id';
     private ?int $countTimeout = 250;
+    private ?string $timeZone = null;
 
     private function __construct(private readonly EloquentBuilder|QueryBuilder $builder)
     {
@@ -51,6 +52,20 @@ final class TableResponse implements Responsable
     public function columns(iterable $columns): self
     {
         $this->columns = [...$columns];
+
+        return $this;
+    }
+
+    /**
+     * The time zone of a day given for a datetime column (`2026-10-23` means
+     * that whole day there), e.g. the user's from the session. Default: the
+     * zone the browser sends as `tz` (datatable-http does with day filters),
+     * else the application's.
+     */
+    public function timeZone(?string $zone): self
+    {
+        TableQuery::fromArray([])->withTimeZone($zone); // refuses an unknown zone now, not at the first request
+        $this->timeZone = $zone;
 
         return $this;
     }
@@ -141,6 +156,9 @@ final class TableResponse implements Responsable
         $unfiltered = clone $this->builder;
         try {
             $query = TableQuery::fromRequest($request, $this->maxPageSize, $this->defaultPageSize);
+            if ($this->timeZone !== null) {
+                $query = $query->withTimeZone($this->timeZone);
+            }
             if ($this->searchEngine !== null && $query->search !== '') {
                 $query = $query->withSearchKeys(($this->searchEngine)($query->search), $this->searchKeyColumn);
             }

@@ -43,6 +43,11 @@ final class TableQuery
         public readonly string $searchKeyColumn = 'id',
         /** DataTables' request counter when the request used its protocol (see fromDataTables()). */
         public readonly ?int $draw = null,
+        /**
+         * The time zone of a day given for a datetime column (`tz`, the browser's
+         * zone; see withTimeZone()). Null: the application's, as before.
+         */
+        public readonly ?string $timeZone = null,
     ) {
     }
 
@@ -107,7 +112,7 @@ final class TableQuery
         ], $maxPageSize, min($defaultPageSize, $maxPageSize));
 
         return new self($query->page, $query->pageSize, $query->sorting, $query->filters, $query->search,
-            draw: self::integer($input['draw'] ?? 0, 'draw', 0, 999_999_999));
+            draw: self::integer($input['draw'] ?? 0, 'draw', 0, 999_999_999), timeZone: self::timeZone($input['tz'] ?? null));
     }
 
     /**
@@ -128,7 +133,21 @@ final class TableQuery
             }
         }
 
-        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, array_values(array_unique($list)), $column, $this->draw);
+        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, array_values(array_unique($list)), $column, $this->draw, $this->timeZone);
+    }
+
+    /**
+     * The same query with days of datetime filters in `$zone` (e.g. the user's
+     * zone from your session), whatever the browser sent; null: the
+     * application's zone.
+     */
+    public function withTimeZone(?string $zone): self
+    {
+        if ($zone !== null && self::timeZone($zone) === null) {
+            throw new \InvalidArgumentException("Unknown time zone [{$zone}].");
+        }
+
+        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, $this->searchKeys, $this->searchKeyColumn, $this->draw, $zone);
     }
 
     public static function fromRequest(Request $request, int $maxPageSize = 100, int $defaultPageSize = 25): self
@@ -163,7 +182,21 @@ final class TableQuery
             self::search($input['search'] ?? ''),
             ($input['paging'] ?? null) === 'cursor' || isset($input['cursor']),
             self::cursor($input['cursor'] ?? null),
+            timeZone: self::timeZone($input['tz'] ?? null),
         );
+    }
+
+    /** A time zone PHP knows (`Europe/Istanbul`, `UTC`), else null: the browser's zone is a hint, not a rule. */
+    private static function timeZone(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '' || strlen($value) > 64) {
+            return null;
+        }
+
+        static $known = null;
+        $known ??= array_flip(\DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC)); // with old names such as Asia/Calcutta
+
+        return isset($known[$value]) ? $value : null;
     }
 
     private static function cursor(mixed $value): ?string
