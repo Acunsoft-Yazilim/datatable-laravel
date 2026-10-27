@@ -48,6 +48,8 @@ final class TableQuery
          * zone; see withTimeZone()). Null: the application's, as before.
          */
         public readonly ?string $timeZone = null,
+        /** Rows to skip: DataTables' `start`, which need not be a whole number of pages. Null: `(page - 1) × pageSize`. */
+        public readonly ?int $offset = null,
     ) {
     }
 
@@ -118,7 +120,7 @@ final class TableQuery
         ], $maxPageSize, min($defaultPageSize, $maxPageSize));
 
         return new self($query->page, $query->pageSize, $query->sorting, $query->filters, $query->search,
-            draw: self::integer($input['draw'] ?? 0, 'draw', 0, 999_999_999), timeZone: self::timeZone($input['tz'] ?? null));
+            draw: self::integer($input['draw'] ?? 0, 'draw', 0, 999_999_999), timeZone: self::timeZone($input['tz'] ?? null), offset: $start);
     }
 
     /**
@@ -139,7 +141,7 @@ final class TableQuery
             }
         }
 
-        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, array_values(array_unique($list)), $column, $this->draw, $this->timeZone);
+        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, array_values(array_unique($list)), $column, $this->draw, $this->timeZone, $this->offset);
     }
 
     /**
@@ -153,7 +155,7 @@ final class TableQuery
             throw new \InvalidArgumentException("Unknown time zone [{$zone}].");
         }
 
-        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, $this->searchKeys, $this->searchKeyColumn, $this->draw, $zone);
+        return new self($this->page, $this->pageSize, $this->sorting, $this->filters, $this->search, $this->cursorPaging, $this->cursor, $this->searchKeys, $this->searchKeyColumn, $this->draw, $zone, $this->offset);
     }
 
     public static function fromRequest(Request $request, int $maxPageSize = 100, int $defaultPageSize = 25): self

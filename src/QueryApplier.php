@@ -277,7 +277,7 @@ final class QueryApplier
         if ($query->cursorPaging) {
             return self::cursorPage($builder, $query, $columns, $countLimit, $countTimeout, $key);
         }
-        $offset = ($query->page - 1) * $query->pageSize;
+        $offset = $query->offset ?? ($query->page - 1) * $query->pageSize;
         if ($maxResultWindow !== null && $offset >= $maxResultWindow) {
             throw InvalidTableQuery::at('page', "Pages past the first {$maxResultWindow} results are not available; narrow the filters or sort the other way.");
         }

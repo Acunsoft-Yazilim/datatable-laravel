@@ -36,6 +36,13 @@ final class DataTablesFiltersTest extends TestCase
         self::assertSame(Order::query()->where('active', true)->orderBy('id')->pluck('customer')->all(), $this->customers($input));
     }
 
+    public function test_start_skips_its_rows_also_when_it_is_no_whole_number_of_pages(): void
+    {
+        $input = ['draw' => '2', 'start' => '3', 'length' => '2', 'columns' => [['data' => 'customer'], ['data' => 'active']]];
+        $page = QueryApplier::paginate(Order::query()->orderBy('id'), TableQuery::fromDataTables($input), $this->columns());
+        self::assertSame(Order::query()->orderBy('id')->skip(3)->take(2)->pluck('customer')->all(), collect($page->items())->pluck('customer')->all());
+    }
+
     public function test_a_column_search_is_contains_without_filters_as_datatables_sends_it(): void
     {
         $input = ['draw' => '1', 'start' => '0', 'length' => '10', 'columns' => [['data' => 'customer', 'search' => ['value' => 'Ka']], ['data' => 'active', 'search' => ['value' => '']]]];
