@@ -134,6 +134,20 @@ final class TableImportTest extends TestCase
         $start(['mapping' => ['customer', 'city', 'total', null], 'mode' => 'upsert'])->assertStatus(409);
     }
 
+    public function test_a_start_while_another_takes_it_is_refused_and_imports_nothing(): void
+    {
+        $id = $this->upload($this->csv($this->orders(3)))->json('id');
+        $body = ['mapping' => ['customer', 'city', 'total', null], 'mode' => 'insert'];
+        $other = \Illuminate\Support\Facades\Cache::lock("acun-datatable:import:{$id}:start", 30);
+        self::assertTrue($other->get()); // another request is starting it right now
+        $this->postJson(self::URL."/{$id}/start", $body)->assertStatus(409);
+        self::assertSame(0, Order::query()->where('customer', 'like', 'New %')->count());
+        $other->release();
+        $this->postJson(self::URL."/{$id}/start", $body)->assertOk()->assertJson(['status' => 'done', 'inserted' => 3]);
+        $this->postJson(self::URL."/{$id}/start", $body)->assertStatus(409); // once started, never again
+        self::assertSame(3, Order::query()->where('customer', 'like', 'New %')->count());
+    }
+
     public function test_insert_refuses_existing_rows_and_update_skips_new_ones(): void
     {
         $file = "Customer,Total\nAli Kaya,1\nBrand New,2";

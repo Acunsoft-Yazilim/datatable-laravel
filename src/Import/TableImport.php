@@ -335,12 +335,27 @@ abstract class TableImport
         if ($problems !== []) {
             return new JsonResponse(['message' => reset($problems), 'errors' => $problems], 422);
         }
-        $offered = $this->offeredModes();
-        $state['mapping'] = $request->json('mapping');
-        $state['mode'] = $request->json('mode') ?? $offered[0];
-        if ($this->shouldQueue($state['rows'])) {
-            $state['status'] = 'queued';
+        // One start wins: two at once (a double click, a retry) must not run the import twice. An
+        // atomic lock of the cache (file, Redis, database, Memcached) holds while it is marked started.
+        $lock = Cache::lock($this->key($id).':start', 30);
+        if (! $lock->get()) {
+            return $this->problem(409, __('acun-datatable::table.import_started'));
+        }
+        try {
+            $state = $this->load($id, $state['owner']);
+            if ($state === null || $state['status'] !== 'mapping') {
+                return $this->problem(409, __('acun-datatable::table.import_started'));
+            }
+            $offered = $this->offeredModes();
+            $state['mapping'] = $request->json('mapping');
+            $state['mode'] = $request->json('mode') ?? $offered[0];
+            $queued = $this->shouldQueue($state['rows']);
+            $state['status'] = $queued ? 'queued' : 'running';
             $this->store($state);
+        } finally {
+            $lock->release();
+        }
+        if ($queued) {
             $job = new RunTableImport(static::class, $id, $state['user'], $state['guard'], app()->getLocale());
             $pending = dispatch($job);
             if (($connection = $this->queueConnection()) !== null) {
@@ -353,8 +368,6 @@ abstract class TableImport
 
             return new JsonResponse($this->view($this->load($id, $state['owner']) ?? $state));
         }
-        $state['status'] = 'running';
-        $this->store($state);
         $this->process($id);
 
         return new JsonResponse($this->view($this->load($id, $state['owner']) ?? $state));
