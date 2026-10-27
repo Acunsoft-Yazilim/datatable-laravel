@@ -48,7 +48,8 @@ the CSRF token, which `AcunDataTable` sends from `<meta name="csrf-token">`).
 **An existing DataTables front end works too.** A request in DataTables'
 server-side protocol (it carries `draw`) is read as such — `start`/`length`,
 `order[i][column|dir]` by column index, `columns[i][search][value]` as a
-`contains` filter, `search[value]`, `length=-1` as the largest page allowed —
+`contains` filter, `search[value]`; `length=-1` ("All") and a length past
+the endpoint's largest page are refused, never cut short —
 and answered with `{ draw, recordsTotal, recordsFiltered, data }`; an
 invalid request gets DataTables' `error` (with a 200, as DataTables expects).
 The same column allowlist and limits apply. So a page still on DataTables

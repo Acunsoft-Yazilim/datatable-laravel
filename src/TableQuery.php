@@ -58,7 +58,8 @@ final class TableQuery
      * `order[i][column|dir]`, `columns[i][data|search][value]`,
      * `search[value]`), so an existing DataTables front end can use this
      * endpoint as it is. A column's `search[value]` becomes a `contains`
-     * filter; `length=-1` asks for the largest page allowed. `filters[i]` in
+     * filter. `length=-1` ("All") and a length past `$maxPageSize` are refused
+     * (a shorter page would leave rows out unseen). `filters[i]` in
      * this package's format are read too, and then the column searches are
      * not: this package's client sends each filter both ways.
      *
@@ -84,8 +85,12 @@ final class TableQuery
             $columns[$index] = ['field' => $field, 'search' => is_array($column['search'] ?? null) ? ($column['search']['value'] ?? '') : ''];
         }
         $length = $input['length'] ?? $defaultPageSize;
-        $length = self::integer($length === '-1' ? -1 : $length, 'length', -1, 1_000_000); // -1: "all
-        $pageSize = $length < 1 ? $maxPageSize : min($length, $maxPageSize);
+        // "All" (-1), or more rows than a page may hold, is refused: a page cut short would leave
+        // rows out with no sign (DataTables shows no pager and counts them as shown).
+        if ($length === '-1' || $length === -1) {
+            throw InvalidTableQuery::at('length', "length -1 (all rows) is not allowed: at most {$maxPageSize} rows a page.");
+        }
+        $pageSize = self::integer($length, 'length', 1, $maxPageSize);
         $start = self::integer($input['start'] ?? 0, 'start', 0, self::MAX_PAGE * $maxPageSize);
         $sort = [];
         foreach (is_array($input['order'] ?? null) ? array_values($input['order']) : [] as $index => $rule) {
