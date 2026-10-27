@@ -26,6 +26,7 @@ final class WorkbenchServiceProvider extends ServiceProvider
         'cursor' => Fixtures\CursorOrdersTable::class,
         'filters' => Fixtures\FilterOrdersTable::class,
         'import' => Fixtures\ImportOrdersTable::class,
+        'layout' => Fixtures\LayoutOrdersTable::class,
     ];
 
     public function register(): void

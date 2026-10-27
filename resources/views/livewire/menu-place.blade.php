@@ -1,7 +1,10 @@
 {{--
   The same placing as @acunsoft/datatable-dom's placeMenu(), for a menu's
   @toggle: an open panel that would stick out of the window is shifted
-  sideways (--adt-menu-shift). Printed inside an attribute, so the script
-  uses single quotes only.
+  sideways (--adt-menu-shift); a row's "⋮" menu is fixed over the page
+  (--adt-menu-x / --adt-menu-y) below its button (above without room below)
+  and follows it while anything scrolls, so the table's scroll box and the
+  cards do not cut it off.
+  Printed inside an attribute, so the script uses single quotes only.
 --}}
-(() => { const menu = $el; menu.style.removeProperty('--adt-menu-shift'); const panel = menu.querySelector(':scope > :not(summary)'); if (! menu.open || ! panel) return; const view = document.documentElement.clientWidth; const box = panel.getBoundingClientRect(); let shift = box.right > view - 8 ? view - 8 - box.right : 0; if (box.left + shift < 8) shift = 8 - box.left; if (shift !== 0) menu.style.setProperty('--adt-menu-shift', Math.round(shift) + 'px'); })()
+(() => { const menu = $el; menu.style.removeProperty('--adt-menu-shift'); const panel = menu.querySelector(':scope > :not(summary)'); if (! panel) return; if (menu.classList.contains('adt-row-menu')) { const at = (x, y) => { menu.style.setProperty('--adt-menu-x', Math.round(x) + 'px'); menu.style.setProperty('--adt-menu-y', Math.round(y) + 'px'); }; const stop = () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); menu._adtStop = null; }; const place = () => { if (! menu.open || ! menu.isConnected) return stop(); const page = document.documentElement; const button = menu.querySelector('summary').getBoundingClientRect(); at(0, 0); const box = panel.getBoundingClientRect(); const below = button.bottom + 6; const above = button.top - 6 - box.height; at(Math.max(8, Math.min(button.right - box.width, page.clientWidth - 8 - box.width)) - box.left, (below + box.height > page.clientHeight - 8 && above >= 8 ? above : below) - box.top); }; if (menu._adtStop) menu._adtStop(); place(); if (menu.open) { menu._adtStop = stop; window.addEventListener('scroll', place, { capture: true, passive: true }); window.addEventListener('resize', place, { passive: true }); } return; } if (! menu.open) return; const view = document.documentElement.clientWidth; const box = panel.getBoundingClientRect(); let shift = box.right > view - 8 ? view - 8 - box.right : 0; if (box.left + shift < 8) shift = 8 - box.left; if (shift !== 0) menu.style.setProperty('--adt-menu-shift', Math.round(shift) + 'px'); })()
