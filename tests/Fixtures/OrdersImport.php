@@ -18,12 +18,15 @@ final class OrdersImport extends TableImport
 
     public static int $maxKilobytes = 64;
 
+    /** Name the columns with their table (`orders.customer`), as a query with joins does. */
+    public static bool $qualified = false;
+
     protected function columns(): array
     {
         return [
-            Column::make('customer')->header('Customer'),
+            Column::make('customer')->header('Customer')->column(self::$qualified ? 'orders.customer' : 'customer'),
             Column::make('city')->header('City'),
-            Column::make('total')->header('Total')->type('decimal'),
+            Column::make('total')->header('Total')->type('decimal')->column(self::$qualified ? 'orders.total' : 'total'),
             Column::make('active')->header('Active')->type('boolean'),
         ];
     }

@@ -40,6 +40,7 @@ final class TableImportTest extends TestCase
         \Illuminate\Support\Facades\DB::table('users')->insert([['id' => 5], ['id' => 6]]);
         OrdersImport::$queueFrom = PHP_INT_MAX;
         OrdersImport::$requiredColumns = ['customer'];
+        OrdersImport::$qualified = false;
         OrdersImport::$maxKilobytes = 64;
         $this->actingAs(new GenericUser(['id' => 5]));
     }
@@ -169,6 +170,17 @@ final class TableImportTest extends TestCase
         $id = $this->upload($this->csv("Customer,Total\nAli Kaya,3\nNobody Yet,4"))->json('id');
         $this->postJson(self::URL."/{$id}/start", ['mapping' => ['customer', 'total'], 'mode' => 'update'])->assertJson(['updated' => 1, 'skipped' => 1, 'inserted' => 0]);
         self::assertFalse(Order::query()->where('customer', 'Nobody Yet')->exists());
+    }
+
+    public function test_columns_named_with_their_table_find_and_fill_their_records(): void
+    {
+        OrdersImport::$qualified = true; // ->column('orders.customer'), ->column('orders.total')
+        $before = Order::query()->count();
+        $id = $this->upload($this->csv("Customer,Total\nAli Kaya,3.25\nBrand New,4"))->json('id');
+        $this->postJson(self::URL."/{$id}/start", ['mapping' => ['customer', 'total'], 'mode' => 'upsert'])->assertJson(['status' => 'done', 'updated' => 1, 'inserted' => 1]);
+        self::assertSame($before + 1, Order::query()->count());
+        self::assertSame(['3.25'], Order::query()->where('customer', 'Ali Kaya')->pluck('total')->map(fn ($total) => (string) $total)->all());
+        self::assertSame('brand new', Order::query()->where('customer', 'Brand New')->value('customer_search'));
     }
 
     public function test_a_key_twice_in_one_file_inserts_once_then_updates(): void
