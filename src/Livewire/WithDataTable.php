@@ -440,10 +440,11 @@ trait WithDataTable
         return 100_000;
     }
 
-    /** CSV delimiter: `;` opens directly in Turkish Excel. */
+    /** CSV delimiter: `;` for Turkish, German, French and Spanish, which Excel there opens directly; else `,`. */
     protected function exportDelimiter(): string
     {
-        return app()->getLocale() === 'tr' ? ';' : ',';
+        // Excel in Turkish, German, French and Spanish (decimal comma) splits CSV at ';' (also tr_TR, de-AT …).
+        return in_array(strtolower(preg_split('/[-_]/', app()->getLocale())[0]), ['tr', 'de', 'fr', 'es'], true) ? ';' : ',';
     }
 
     /** @return list<Action> buttons in each row; handlers receive the row */
