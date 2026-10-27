@@ -77,6 +77,16 @@ final class TableExportTest extends TestCase
         $zip->close();
     }
 
+    public function test_text_that_looks_like_an_escape_reads_back_exactly(): void
+    {
+        Order::query()->whereKey(1)->update(['note' => '_x0041_ literal']);
+        $path = tempnam(sys_get_temp_dir(), 'adt-test-');
+        TableExport::for(Order::query()->whereKey(1))->columns([Column::make('note')->header('Not')])->saveXlsx($path);
+        $sheet = (new SheetReader())->read($path, 'xlsx');
+        @unlink($path);
+        self::assertSame('_x0041_ literal', $sheet->rows[0][0]); // not "A literal"
+    }
+
     public function test_the_query_is_checked_and_large_exports_are_refused_with_422(): void
     {
         Route::get('/export', fn () => TableExport::for(Order::query())->columns($this->columns())->limit(3)->csv());

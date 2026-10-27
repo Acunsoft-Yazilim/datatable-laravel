@@ -175,6 +175,9 @@ final class XlsxWriter
                 $note($text);
                 $style = $kind === 'header' ? ' s="1"' : '';
 
+                // A literal _xHHHH_ would be read as an escaped character: Excel writes its _ as _x005F_.
+                $text = preg_replace('/_x(?=[0-9a-fA-F]{4}_)/', '_x005F_x', $text) ?? $text;
+
                 return '<c r="'.$ref.'" t="inlineStr"'.$style.'><is><t xml:space="preserve">'.self::xml($text).'</t></is></c>';
         }
     }
