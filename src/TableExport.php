@@ -36,6 +36,7 @@ final class TableExport
     private ?array $queryColumns = null;
     private int $limit = 100_000;
     private int $chunk = 1_000;
+    private ?string $key = null;
 
     private function __construct(private readonly EloquentBuilder|QueryBuilder $builder)
     {
@@ -74,6 +75,15 @@ final class TableExport
         $copy = clone $this;
         $copy->query = $query;
         $copy->queryColumns = $columns === null ? null : array_values(is_array($columns) ? $columns : iterator_to_array($columns, false));
+
+        return $copy;
+    }
+
+    /** The unique key of a query-builder table, the last sort tie-breaker so chunks never repeat or skip rows (Eloquent uses the model key). */
+    public function key(string $column): self
+    {
+        $copy = clone $this;
+        $copy->key = $column;
 
         return $copy;
     }
@@ -195,7 +205,7 @@ final class TableExport
             $rebuilt = $rebuilt->withSearchKeys($query->searchKeys, $query->searchKeyColumn); // the engine's answer, as on screen
         }
         $rebuilt = $rebuilt->withTimeZone($query->timeZone); // the user's days, as on screen
-        $builder = QueryApplier::apply(clone $this->builder, $rebuilt, $this->queryColumns ?? $this->columns);
+        $builder = QueryApplier::apply(clone $this->builder, $rebuilt, $this->queryColumns ?? $this->columns, $this->key);
         // Stops after limit + 1 rows (a plain count() ignores the limit and counts every row).
         if (! QueryApplier::count($builder, $this->limit, null)[1]) {
             throw InvalidTableQuery::at('export', __('acun-datatable::table.export_too_large', ['max' => $this->limit]));

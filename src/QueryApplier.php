@@ -26,7 +26,8 @@ use Throwable;
  * - Smart search: every word must match in some searchable column.
  * - `date` columns compare days; in `datetime` columns a date-only value means
  *   the whole day (`whereDate`), a value with a time an exact instant.
- * - Sorting adds the primary key as a tie-breaker so pages are stable.
+ * - Sorting adds the key as a tie-breaker so pages are stable: the model key
+ *   of an Eloquent query, the `$key` given for a query builder.
  */
 final class QueryApplier
 {
@@ -34,10 +35,11 @@ final class QueryApplier
 
     /**
      * @param iterable<Column> $columns
+     * @param string|null $key a query builder's unique key, the last sort tie-breaker (Eloquent uses the model key)
      *
      * @throws InvalidTableQuery
      */
-    public static function apply(EloquentBuilder|QueryBuilder $builder, TableQuery $query, iterable $columns): EloquentBuilder|QueryBuilder
+    public static function apply(EloquentBuilder|QueryBuilder $builder, TableQuery $query, iterable $columns, ?string $key = null): EloquentBuilder|QueryBuilder
     {
         $byId = self::index($columns);
 
@@ -109,9 +111,22 @@ final class QueryApplier
                 // (sorted column, key) serves the whole ORDER BY (deep pages 27× faster, measured on 5M PostgreSQL rows).
                 $builder->orderBy($model->getQualifiedKeyName(), $query->sorting === [] ? 'asc' : $query->sorting[array_key_last($query->sorting)]['direction']);
             }
+        } elseif ($key !== null) {
+            self::tieBreak($builder, $key);
         }
 
         return $builder;
+    }
+
+    /** Order a query builder by its key last (unless it is sorted by it), in the direction of the last order. */
+    private static function tieBreak(QueryBuilder $base, string $key): void
+    {
+        $table = is_string($base->from) ? $base->from : null;
+        $sorted = array_map(fn (array $order) => $order['column'] ?? null, $base->orders ?? []);
+        if (! in_array($key, $sorted, true) && ($table === null || ! in_array("{$table}.{$key}", $sorted, true))) {
+            $last = $base->orders === null || $base->orders === [] ? 'asc' : strtolower((string) ($base->orders[array_key_last($base->orders)]['direction'] ?? 'asc'));
+            $base->orderBy($key, $last === 'desc' ? 'desc' : 'asc');
+        }
     }
 
     /**
@@ -151,17 +166,8 @@ final class QueryApplier
      */
     public static function cursorPage(EloquentBuilder|QueryBuilder $builder, TableQuery $query, iterable $columns, ?int $countLimit = 10_000, ?int $countTimeout = 250, ?string $key = null): TablePage
     {
-        $applied = self::apply($builder, $query, $columns);
+        $applied = self::apply($builder, $query, $columns, $key ?? 'id');
         $base = $applied instanceof EloquentBuilder ? $applied->getQuery() : $applied;
-        if (! $applied instanceof EloquentBuilder) {
-            $key ??= 'id';
-            $table = is_string($base->from) ? $base->from : null;
-            $sorted = array_map(fn (array $order) => $order['column'] ?? null, $base->orders ?? []);
-            if (! in_array($key, $sorted, true) && ($table === null || ! in_array("{$table}.{$key}", $sorted, true))) {
-                $last = $base->orders === null || $base->orders === [] ? 'asc' : strtolower((string) ($base->orders[array_key_last($base->orders)]['direction'] ?? 'asc'));
-                $base->orderBy($key, $last === 'desc' ? 'desc' : 'asc');
-            }
-        }
         $nullable = [];
         foreach ($columns as $column) {
             if ($column->isNullable()) {
@@ -275,7 +281,7 @@ final class QueryApplier
         if ($maxResultWindow !== null && $offset >= $maxResultWindow) {
             throw InvalidTableQuery::at('page', "Pages past the first {$maxResultWindow} results are not available; narrow the filters or sort the other way.");
         }
-        $applied = self::apply($builder, $query, $columns);
+        $applied = self::apply($builder, $query, $columns, $key);
         [$total, $exact] = self::count($applied, $countLimit, $countTimeout);
         if ($exact) {
             $items = $offset < $total ? (clone $applied)->offset($offset)->limit($query->pageSize)->get() : [];

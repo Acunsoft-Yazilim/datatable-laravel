@@ -541,7 +541,10 @@ Unknown, undeclared or not-allowed fields and malformed values throw
   profile), else in `app.timezone`; a value with a time is an exact instant
   converted to `app.timezone`.
 - **Sorting:** up to 5 rules (`sort=total:desc,customer:asc`); the primary key
-  is added as a tie-breaker so pages are stable.
+  is added as a tie-breaker so pages are stable. A query builder
+  (`DB::table('orders')`) has no model key: name it with
+  `TableResponse::for(…)->key('id')` / `TableExport::for(…)->key('id')`
+  (Livewire tables use `keyName()`).
 - **Limits:** page 1–10,000,000; page size up to `maxPageSize` (≤ 1000); at most
   20 filters, 1000 `in` values, 200 characters per value and search.
 - **Rows:** only the key and the declared columns are returned, unless you pass

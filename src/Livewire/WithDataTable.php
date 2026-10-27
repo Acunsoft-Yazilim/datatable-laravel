@@ -1120,6 +1120,7 @@ trait WithDataTable
         $selected = $this->selectable() && $this->selectedCount() > 0;
         $export = TableExport::for($selected ? $this->selectedQuery() : $this->query())
             ->columns($this->dataTableVisibleColumns())
+            ->key($this->keyName())
             ->limit($this->exportLimit())
             ->query($selected
                 ? TableQuery::fromArray(['sort' => implode(',', array_map(fn (array $rule) => "{$rule['field']}:{$rule['direction']}", $query->sorting))])
@@ -1242,6 +1243,7 @@ trait WithDataTable
         $selected = $this->selectable() && $this->selectedCount() > 0;
         $export = TableExport::for($selected ? $this->selectedQuery() : $this->query())
             ->columns($this->dataTableVisibleColumns())
+            ->key($this->keyName())
             ->limit(min($this->queuedExportLimit(), \Acunsoft\DataTable\Laravel\Export\XlsxWriter::MAX_ROWS))
             ->query($selected
                 ? TableQuery::fromArray(['sort' => implode(',', array_map(fn (array $rule) => "{$rule['field']}:{$rule['direction']}", $query->sorting))])
