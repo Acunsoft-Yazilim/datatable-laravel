@@ -132,12 +132,17 @@ final class TableExport
     /** Write the xlsx to a file (e.g. in a queued export) instead of a download. */
     public function saveXlsx(string $path, ?string $sheetName = null): void
     {
+        $rows = $this->rows(); // "too large" before any file is made
         $writer = new XlsxWriter($path, $sheetName ?? 'Sheet1');
-        $writer->header(array_map(fn (Column $column) => $column->headerText(), $this->columns));
-        foreach ($this->rows() as $row) {
-            $writer->row(array_map(fn (Column $column) => $this->cell($column, $row), $this->columns));
+        try {
+            $writer->header(array_map(fn (Column $column) => $column->headerText(), $this->columns));
+            foreach ($rows as $row) {
+                $writer->row(array_map(fn (Column $column) => $this->cell($column, $row), $this->columns));
+            }
+            $writer->close();
+        } finally {
+            $writer->discard(); // after a failure half-way; nothing to do once closed
         }
-        $writer->close();
     }
 
     private static function checkDelimiter(string $delimiter): void

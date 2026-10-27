@@ -86,6 +86,26 @@ final class TableExportTest extends TestCase
         $this->getJson('/export-bad')->assertStatus(422)->assertJsonPath('errors.sort', 'Unknown column [secret].');
     }
 
+    public function test_a_failed_xlsx_leaves_no_temporary_file(): void
+    {
+        $sheets = fn () => count(glob(sys_get_temp_dir().'/adt-sheet-*') ?: []);
+        $before = $sheets();
+        $path = tempnam(sys_get_temp_dir(), 'adt-test-');
+        try {
+            TableExport::for(Order::query())->columns($this->columns())->limit(3)->saveXlsx($path); // too large: refused first
+        } catch (\Acunsoft\DataTable\Laravel\InvalidTableQuery) {
+        }
+        $boom = [Column::make('customer')->format(fn () => throw new \RuntimeException('a formatter failed'))];
+        try {
+            TableExport::for(Order::query())->columns($boom)->saveXlsx($path); // fails half-way
+            self::fail('no exception');
+        } catch (\RuntimeException $error) {
+            self::assertSame('a formatter failed', $error->getMessage());
+        }
+        @unlink($path);
+        self::assertSame($before, $sheets());
+    }
+
     public function test_options_are_validated(): void
     {
         $this->expectException(\InvalidArgumentException::class);

@@ -25,6 +25,7 @@ final class XlsxWriter
     /** @var resource */
     private $sheet;
     private string $sheetPath;
+    private bool $done = false;
     private int $row = 0;
     /** @var list<int> */
     private array $widths = [];
@@ -103,6 +104,25 @@ final class XlsxWriter
         $zip->close();
         @unlink($worksheet);
         @unlink($this->sheetPath);
+        $this->done = true;
+    }
+
+    /** Drop the rows written so far (an export that failed half-way): no temporary file is left behind. */
+    public function discard(): void
+    {
+        if ($this->done) {
+            return;
+        }
+        $this->done = true;
+        if (is_resource($this->sheet)) {
+            fclose($this->sheet);
+        }
+        @unlink($this->sheetPath);
+    }
+
+    public function __destruct()
+    {
+        $this->discard();
     }
 
     /** @param list<array{0: string, 1: mixed}> $cells */
