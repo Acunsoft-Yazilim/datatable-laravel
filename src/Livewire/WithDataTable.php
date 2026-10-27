@@ -141,7 +141,6 @@ trait WithDataTable
         return 250;
     }
 
-    /** Pages start at most this many rows deep (default 100,000; `null`: no limit). */
     /**
      * Answer the search with a search engine instead of `LIKE` over the
      * columns: return the matching keys, e.g. with Laravel Scout
@@ -187,6 +186,7 @@ trait WithDataTable
         return false;
     }
 
+    /** Pages start at most this many rows deep (default 100,000; `null`: no limit). */
     protected function maxResultWindow(): ?int
     {
         return 100_000;

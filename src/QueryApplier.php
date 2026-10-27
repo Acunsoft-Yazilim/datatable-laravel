@@ -6,7 +6,6 @@ namespace Acunsoft\DataTable\Laravel;
 
 use Acunsoft\DataTable\Laravel\Support\Text;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\QueryException;
@@ -25,7 +24,8 @@ use Throwable;
  *   `Column::searchUsing()` names a stored folded copy, faster on large tables.
  * - Smart search: every word must match in some searchable column.
  * - `date` columns compare days; in `datetime` columns a date-only value means
- *   the whole day (`whereDate`), a value with a time an exact instant.
+ *   the whole day (a `[day, next day)` range the column's index serves), a
+ *   value with a time an exact instant.
  * - Sorting adds the key as a tie-breaker so pages are stable: the model key
  *   of an Eloquent query, the `$key` given for a query builder.
  */
@@ -129,25 +129,6 @@ final class QueryApplier
         }
     }
 
-    /**
-     * Apply the query and fetch one page.
-     *
-     * - `$countLimit` (default 10,000) and `$countTimeout` (default 250 ms): up
-     *   to the limit the count is exact (it stops after `$countLimit` + 1
-     *   matches; rare matches no index serves can still read the whole
-     *   table, so its cost depends on the query and the database). Beyond it an exact
-     *   COUNT(*) runs with a time limit (PostgreSQL, MySQL, MariaDB); only when
-     *   it would take longer, TablePage::totalIsExact() is false and the UI
-     *   shows "10,000+". `$countLimit = null` always counts everything without
-     *   a time limit; `$countTimeout = null` never counts past the limit.
-     * - `$maxResultWindow` (default 100,000): refuse pages that start past this
-     *   many rows (deep OFFSETs are slow and an easy way to load the database).
-     *   `null` allows any page.
-     *
-     * @param iterable<Column> $columns
-     *
-     * @throws InvalidTableQuery
-     */
     /**
      * Keyset paging: the page after `$query->cursor`, continuing after the
      * last row of the page before by its sort values and key, through an index
@@ -272,6 +253,25 @@ final class QueryApplier
         return $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
     }
 
+    /**
+     * Apply the query and fetch one page.
+     *
+     * - `$countLimit` (default 10,000) and `$countTimeout` (default 250 ms): up
+     *   to the limit the count is exact (it stops after `$countLimit` + 1
+     *   matches; rare matches no index serves can still read the whole
+     *   table, so its cost depends on the query and the database). Beyond it an exact
+     *   COUNT(*) runs with a time limit (PostgreSQL, MySQL, MariaDB); only when
+     *   it would take longer, TablePage::totalIsExact() is false and the UI
+     *   shows "10,000+". `$countLimit = null` always counts everything without
+     *   a time limit; `$countTimeout = null` never counts past the limit.
+     * - `$maxResultWindow` (default 100,000): refuse pages that start past this
+     *   many rows (deep OFFSETs are slow and an easy way to load the database).
+     *   `null` allows any page.
+     *
+     * @param iterable<Column> $columns
+     *
+     * @throws InvalidTableQuery
+     */
     public static function paginate(EloquentBuilder|QueryBuilder $builder, TableQuery $query, iterable $columns, ?int $countLimit = 10_000, ?int $maxResultWindow = 100_000, ?int $countTimeout = 250, ?string $key = null): TablePage
     {
         if ($query->cursorPaging) {

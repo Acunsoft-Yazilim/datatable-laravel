@@ -7,7 +7,7 @@ namespace Acunsoft\DataTable\Laravel;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Registers the views (`acun-datatable::…`) and the TR/EN texts
+ * Registers the views (`acun-datatable::…`) and the texts (en, tr, de, fr, es)
  * (`acun-datatable::table.*`). Loaded automatically by package discovery.
  */
 final class DataTableServiceProvider extends ServiceProvider
