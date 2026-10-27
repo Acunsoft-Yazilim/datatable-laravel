@@ -515,6 +515,19 @@ abstract class TableImport
         $this->store($state);
     }
 
+    /** End a started import as failed, when its job cannot run it (e.g. its user is gone). */
+    final public function fail(string $id): void
+    {
+        $state = Cache::get($this->key($id));
+        if (! is_array($state) || ! in_array($state['status'], ['queued', 'running'], true)) {
+            return;
+        }
+        $state['status'] = 'failed';
+        $state['message'] = __('acun-datatable::table.import_failed');
+        Storage::disk($this->disk())->delete($state['path']);
+        $this->store($state);
+    }
+
     // ---- Helpers -------------------------------------------------------------
 
     /** 403 when not authorized, 401 when nobody can own an import (no user, no session). */

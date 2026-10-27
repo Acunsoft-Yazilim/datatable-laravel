@@ -1209,8 +1209,15 @@ trait WithDataTable
         $id = (string) \Illuminate\Support\Str::uuid();
         $user = \Illuminate\Support\Facades\Auth::guard($guard)->id();
         TableTasks::put($id, ['status' => 'queued', 'task' => $task, 'user' => $user, 'guard' => $guard, 'owner' => $owner]);
-        $state = array_filter($this->all(), fn ($value) => $value === null || is_scalar($value) || is_array($value));
-        unset($state['tableTask']);
+        // Through Livewire's synthesizers: models, enums, dates and forms travel as they do between requests.
+        $synths = app(\Livewire\Mechanisms\HandleSynths\HandleSynths::class);
+        $context = new \Livewire\Mechanisms\HandleComponents\ComponentContext($this);
+        $state = [];
+        foreach ($this->all() as $name => $value) {
+            if ($name !== 'tableTask') {
+                $state[$name] = $synths->dehydrate($value, $context, $name);
+            }
+        }
         $this->tableTask = $id;
         dispatch(new \Acunsoft\DataTable\Laravel\Jobs\RunTableTask(static::class, $state, $task, $argument, $id, $user, $guard, app()->getLocale()));
 

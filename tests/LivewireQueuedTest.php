@@ -36,7 +36,7 @@ final class LivewireQueuedTest extends TestCase
         $id = $table->get('tableTask');
         self::assertIsString($id);
         $state = TableTasks::get($id);
-        self::assertSame('ready', $state['status']);
+        self::assertSame('ready', $state['status'], json_encode($state));
         $matching = Order::query()->where('customer', 'like', '%a%')->count();
         $csv = Storage::disk('local')->get($state['path']);
         self::assertCount($matching + 1, array_filter(explode("\r\n", ltrim($csv, "\u{FEFF}")))); // the search applied, past the limit of 2
@@ -52,6 +52,19 @@ final class LivewireQueuedTest extends TestCase
         $this->withCookie($cookie, $session)->get($url)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         self::assertFalse(Storage::disk('local')->exists($state['path'])); // deleted once sent
         $this->withCookie($cookie, $session)->get($url)->assertNotFound();
+    }
+
+    public function test_a_model_of_the_table_travels_to_the_queue(): void
+    {
+        Storage::fake('local');
+        $this->startSession();
+        Order::query()->insert([['customer' => 'Queue Customer', 'customer_search' => 'queue customer', 'total' => 1], ['customer' => 'Queue Customer', 'customer_search' => 'queue customer', 'total' => 2]]);
+        $order = Order::query()->where('customer', 'Queue Customer')->firstOrFail(); // two orders: past the export limit of 1
+        $table = Livewire::test(\Acunsoft\DataTable\Laravel\Tests\Fixtures\OneCustomerOrdersTable::class, ['only' => $order])->call('export', 'csv');
+        $state = TableTasks::get($table->get('tableTask'));
+        self::assertSame('ready', $state['status'], json_encode($state));
+        $lines = array_values(array_filter(explode("\r\n", ltrim(Storage::disk('local')->get($state['path']), "\u{FEFF}"))));
+        self::assertSame(Order::query()->where('customer', $order->customer)->count() + 1, count($lines)); // that customer only, not every order
     }
 
     public function test_only_the_user_who_started_it_may_download(): void

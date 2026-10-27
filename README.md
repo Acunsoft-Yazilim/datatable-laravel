@@ -435,9 +435,11 @@ protected function bulkActions(): array
 
 An export past `exportLimit()` (or a `queued()` bulk action) goes to a job,
 `RunTableTask`, and the table says so while you keep working. The job
-rebuilds the table from its state (search, filters, sorting, selection) **as
-the user who started it**, so `query()` and policies see the same user (and
-the worker forgets that user afterwards). When the file is ready the table
+rebuilds the table from its public properties (search, filters, sorting,
+selection, and your own: a model, an enum or a date travels through
+Livewire's synthesizers, as between requests) **as the user who started
+it**, so `query()` and policies see the same user (and the worker forgets
+that user afterwards); a user deleted meanwhile fails the task. When the file is ready the table
 shows "Download": a signed link valid for an hour, only for that user (a
 guest's task belongs to the guest's session), and the file is deleted once
 sent. A table runs one task at a time, and one visitor may start
@@ -786,7 +788,8 @@ protected function importEndpoint(): ?string { return url('orders/import'); }
 - **At once or in the background — your choice:** `shouldQueue(int $rows)`
   (default `false`) dispatches `RunTableImport` on your queue
   (`queueConnection()`, `queueName()`; `database`, `redis`, `sqs`, `sync` —
-  none is required), as the user who started it. The dialog follows the
+  none is required), as the user who started it (deleted meanwhile: the
+  import fails and imports nothing). The dialog follows the
   progress after every chunk and can cancel between chunks.
 - **State** lives in the app's cache store (any driver; `array` only works in
   one request), files on `disk()` (`local`, private) for `keepSeconds()` (a

@@ -14,10 +14,11 @@ use Throwable;
 
 /**
  * A table task in the background: a large export, or a bulk action on many
- * rows. The Livewire table is built again from its public state (search,
- * filters, sorting, selection) as the user who started it, so `query()` and
- * policies see the same user, and the component's own runTableTask() does
- * the work.
+ * rows. The Livewire table is built again from its public properties
+ * (search, filters, sorting, selection, and models, enums or dates of its
+ * own, through Livewire's synthesizers as between requests) as the user who
+ * started it, so `query()` and policies see the same user, and the
+ * component's own runTableTask() does the work.
  */
 final class RunTableTask implements ShouldQueue
 {
@@ -29,7 +30,7 @@ final class RunTableTask implements ShouldQueue
 
     public int $timeout = 3600;
 
-    /** @param array<string, mixed> $state the component's public properties */
+    /** @param array<string, mixed> $state the component's public properties, dehydrated by Livewire's synthesizers */
     public function __construct(
         public readonly string $component,
         public readonly array $state,
@@ -60,9 +61,11 @@ final class RunTableTask implements ShouldQueue
                 $guard->forgetUser(); // a guest's task runs as a guest
             }
             $component = app($this->component);
+            $synths = app(\Livewire\Mechanisms\HandleSynths\HandleSynths::class);
+            $context = new \Livewire\Mechanisms\HandleComponents\ComponentContext($component);
             foreach ($this->state as $name => $value) {
                 if (property_exists($component, $name)) {
-                    $component->{$name} = $value;
+                    $component->{$name} = $synths->hydrate($value, $context, $name); // plain values (older jobs) come back as they are
                 }
             }
             $task = $this->task;

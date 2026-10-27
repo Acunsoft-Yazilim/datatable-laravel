@@ -43,11 +43,18 @@ final class RunTableImport implements ShouldQueue
         $guard = Auth::guard($this->guard);
         $previous = method_exists($guard, 'hasUser') && $guard->hasUser() ? $guard->user() : null;
         try {
-            if ($this->user !== null && method_exists($guard, 'getProvider') && method_exists($guard, 'setUser')) {
-                $model = $guard->getProvider()->retrieveById($this->user);
-                if ($model !== null) {
-                    $guard->setUser($model);
+            if ($this->user !== null) {
+                // Never as somebody else, nor as a guest: the import ends as failed.
+                $model = method_exists($guard, 'getProvider') && method_exists($guard, 'setUser') ? $guard->getProvider()->retrieveById($this->user) : null;
+                if ($model === null) {
+                    app($this->import)->fail($this->id);
+                    report(new \RuntimeException('The user who started the import no longer exists.'));
+
+                    return;
                 }
+                $guard->setUser($model);
+            } elseif (method_exists($guard, 'forgetUser')) {
+                $guard->forgetUser(); // a guest's import runs as a guest
             }
             app($this->import)->process($this->id);
         } finally {

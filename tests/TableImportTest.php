@@ -236,6 +236,19 @@ final class TableImportTest extends TestCase
         self::assertSame(12, Order::query()->count());
     }
 
+    public function test_a_queued_import_whose_user_is_gone_fails_and_imports_nothing(): void
+    {
+        OrdersImport::$queueFrom = 5;
+        Queue::fake();
+        $id = $this->upload($this->csv($this->orders(7)))->json('id');
+        $this->postJson(self::URL."/{$id}/start", ['mapping' => ['customer', 'city', 'total', null], 'mode' => 'insert'])->assertJson(['status' => 'queued']);
+        \Illuminate\Support\Facades\DB::table('users')->where('id', 5)->delete();
+        (new RunTableImport(OrdersImport::class, $id, 5, null, 'en'))->handle();
+        $this->getJson(self::URL."/{$id}")->assertJson(['status' => 'failed', 'inserted' => 0, 'message' => 'The import could not be completed.']);
+        self::assertSame(5, Order::query()->count());
+        Storage::disk('local')->assertMissing("acun-datatable/imports/{$id}/source.csv");
+    }
+
     public function test_a_running_import_stops_between_chunks_when_cancelled(): void
     {
         OrdersImport::$queueFrom = 5;
