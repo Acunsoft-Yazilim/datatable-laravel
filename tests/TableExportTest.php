@@ -77,6 +77,17 @@ final class TableExportTest extends TestCase
         $zip->close();
     }
 
+    public function test_sheet_names_lose_an_apostrophe_at_either_end(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'adt-test-');
+        TableExport::for(Order::query())->columns($this->columns())->saveXlsx($path, "'Siparişler'");
+        $zip = new \ZipArchive();
+        $zip->open($path);
+        self::assertStringContainsString('<sheet name="Siparişler"', $zip->getFromName('xl/workbook.xml'));
+        $zip->close();
+        @unlink($path);
+    }
+
     public function test_text_that_looks_like_an_escape_reads_back_exactly(): void
     {
         Order::query()->whereKey(1)->update(['note' => '_x0041_ literal']);

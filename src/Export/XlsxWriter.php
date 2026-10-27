@@ -213,7 +213,8 @@ final class XlsxWriter
 
     private static function sheetName(string $name): string
     {
-        $clean = trim(mb_substr(preg_replace('/[\[\]:*?\/\\\\]/', ' ', $name) ?? '', 0, 31));
+        // Excel refuses these characters, and an apostrophe at either end.
+        $clean = trim(trim(mb_substr(preg_replace('/[\[\]:*?\/\\\\]/', ' ', $name) ?? '', 0, 31)), " '");
 
         return $clean === '' || strtolower($clean) === 'history' ? 'Sheet1' : $clean;
     }
