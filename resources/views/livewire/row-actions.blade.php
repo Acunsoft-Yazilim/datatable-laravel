@@ -22,7 +22,7 @@
             @foreach ($menuActions as $action)
                 <button type="button" @class(['adt-menu-item', 'adt-menu-item--danger' => $action->isDanger()]) data-action="{{ $action->id() }}"
                     aria-label="{{ $this->tableText('row_action', ['action' => $action->labelText(), 'name' => $name]) }}"
-                    x-on:click="$el.closest('details').open = false"
+                    x-on:click="$el.closest('details').open = false; $el.closest('details').querySelector('summary').focus()"
                     wire:click="runRowAction({{ \Illuminate\Support\Js::from($action->id()) }}, {{ \Illuminate\Support\Js::from($key) }})"
                     @if ($action->confirmText() !== null) wire:confirm="{{ $action->confirmText() }}" @endif>@if ($action->iconPath() !== null)<svg class="adt-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="{{ $action->iconPath() }}"/></svg>@endif<span>{{ $action->labelText() }}</span></button>
             @endforeach
