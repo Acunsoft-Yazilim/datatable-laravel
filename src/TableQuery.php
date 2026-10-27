@@ -57,7 +57,8 @@ final class TableQuery
      * `search[value]`), so an existing DataTables front end can use this
      * endpoint as it is. A column's `search[value]` becomes a `contains`
      * filter; `length=-1` asks for the largest page allowed. `filters[i]` in
-     * this package's format are read too.
+     * this package's format are read too, and then the column searches are
+     * not: this package's client sends each filter both ways.
      *
      * @param array<string, mixed> $input
      *
@@ -96,10 +97,15 @@ final class TableQuery
             }
             $sort[$columns[$column]['field']] = $columns[$column]['field'].':'.(($rule['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc');
         }
+        // This package's client sends each filter twice: in `filters[i]` and, for DataTables back
+        // ends, as its column's search. With `filters[i]` the column searches are those copies;
+        // without them (DataTables itself) a column's search is a `contains` filter.
         $filters = is_array($input['filters'] ?? null) ? array_values($input['filters']) : [];
-        foreach (array_filter($columns) as $column) {
-            if (is_string($column['search']) && trim($column['search']) !== '') {
-                $filters[] = ['field' => $column['field'], 'op' => 'contains', 'value' => $column['search']];
+        if ($filters === []) {
+            foreach (array_filter($columns) as $column) {
+                if (is_string($column['search']) && trim($column['search']) !== '') {
+                    $filters[] = ['field' => $column['field'], 'op' => 'contains', 'value' => $column['search']];
+                }
             }
         }
         $search = $input['search'] ?? '';
