@@ -87,6 +87,15 @@ final class LivewireActionsTest extends TestCase
         self::assertNotContains('k3', $table->get('excluded')); // taking it back still works
     }
 
+    public function test_the_selection_is_announced_from_the_first_row_on(): void
+    {
+        $table = Livewire::test(OrdersTable::class);
+        self::assertMatchesRegularExpression('/<span class="adt-sr-only adt-selection-status" role="status">\s*<\/span>/', $table->html()); // there before anything is chosen
+        $table->call('toggleRow', '1');
+        self::assertMatchesRegularExpression('/<span class="adt-sr-only adt-selection-status" role="status">1 selected<\/span>/', $table->html());
+        self::assertSame(1, substr_count($table->html(), 'role="status">1 selected'), 'read out once, not by the visible count too');
+    }
+
     public function test_bulk_actions_need_a_selection_and_must_be_visible(): void
     {
         Livewire::test(OrdersTable::class)->call('runBulkAction', 'archive'); // nothing selected

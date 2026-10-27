@@ -33,6 +33,13 @@ final class LivewireExportImportTest extends TestCase
         self::assertStringNotContainsString('Ayşe', $content);
     }
 
+    public function test_the_file_choosers_made_of_labels_are_buttons(): void
+    {
+        $html = Livewire::test(OrdersImportTable::class)->html();
+        self::assertSame(substr_count($html, 'tabindex="0"'), substr_count($html, 'tabindex="0" role="button"'));
+        self::assertGreaterThan(0, substr_count($html, 'role="button"'));
+    }
+
     public function test_csv_uses_semicolons_where_excel_expects_them(): void
     {
         foreach (['de' => ';', 'fr_FR' => ';', 'es' => ';', 'tr' => ';', 'en' => ','] as $locale => $delimiter) {

@@ -19,7 +19,7 @@
             ? $importFile->getClientOriginalName()
             : $this->tableText('import_file') }}</span>
         <span class="adt-import-buttons">
-            <label class="adt-button" for="{{ $importId }}" tabindex="0"
+            <label class="adt-button" for="{{ $importId }}" tabindex="0" role="button"
                 @keydown.enter.prevent="$el.click()" @keydown.space.prevent="$el.click()">{{ $this->tableText('import_choose') }}</label>
             @if ($importFile !== null)
                 <button type="submit" class="adt-button adt-button--primary adt-import-button"

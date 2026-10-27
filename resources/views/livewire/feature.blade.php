@@ -141,7 +141,7 @@
                             <button type="button" class="adt-menu-item adt-import-open"
                                 @click="$el.closest('details').open = false; @include('acun-datatable::livewire.import-open', ['url' => $importEndpoint])">{{ $this->tableText('import_open') }}</button>
                         @elseif ($importable)
-                            <label class="adt-menu-item" for="{{ $importId }}" tabindex="0"
+                            <label class="adt-menu-item" for="{{ $importId }}" tabindex="0" role="button"
                                 @keydown.enter.prevent="$el.click()" @keydown.space.prevent="$el.click()"
                                 @click="$el.closest('details').open = false">{{ $this->tableText('import_open') }}</label>
                         @endif
