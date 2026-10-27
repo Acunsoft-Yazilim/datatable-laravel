@@ -1268,6 +1268,12 @@ trait WithDataTable
 
             return;
         }
+        if (in_array($state['status'] ?? null, ['queued', 'running'], true)) {
+            // Polled every 2 s: nothing to show yet, so the table (its counts and page) is not read again.
+            $this->skipRender();
+
+            return;
+        }
         if (($state['status'] ?? null) === 'ready' && ($state['task'] ?? null) === 'bulk') {
             unset($this->rows); // show the changed rows
         }

@@ -12,6 +12,13 @@ final class QueuedOrdersTable extends \Livewire\Component
 {
     use \Acunsoft\DataTable\Laravel\Livewire\WithDataTable;
 
+    public static int $renders = 0;
+
+    public function rendered(): void
+    {
+        self::$renders++;
+    }
+
     protected function columns(): array
     {
         return [

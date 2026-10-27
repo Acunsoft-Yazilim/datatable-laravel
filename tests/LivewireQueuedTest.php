@@ -130,6 +130,24 @@ final class LivewireQueuedTest extends TestCase
         \Illuminate\Support\Facades\Queue::assertPushed(\Acunsoft\DataTable\Laravel\Jobs\RunTableTask::class, 10);
     }
 
+    public function test_polling_a_task_still_running_renders_nothing(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->startSession();
+        $table = Livewire::test(QueuedOrdersTable::class)->call('export', 'csv');
+        $id = $table->get('tableTask');
+        QueuedOrdersTable::$renders = 0;
+        $table->call('checkTableTask')->call('checkTableTask');
+        self::assertSame(0, QueuedOrdersTable::$renders); // queued: no page, count or totals read again
+        TableTasks::put($id, ['status' => 'running']);
+        $table->call('checkTableTask');
+        self::assertSame(0, QueuedOrdersTable::$renders);
+        TableTasks::put($id, ['status' => 'ready', 'path' => 'acun-datatable/x.csv']);
+        $table->call('checkTableTask');
+        self::assertSame(1, QueuedOrdersTable::$renders);
+        self::assertStringContainsString('The export is ready.', $table->html());
+    }
+
     public function test_the_worker_forgets_the_user_of_a_job_once_it_is_done(): void
     {
         $guard = \Illuminate\Support\Facades\Auth::guard();
