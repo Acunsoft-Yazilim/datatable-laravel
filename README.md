@@ -841,7 +841,7 @@ $page  = QueryApplier::paginate(Order::query(), $query, $columns); // LengthAwar
 
 ## Upgrading
 
-From 0.4: see [UPGRADING.md](https://github.com/kemaloskan/acun-datatable/blob/main/UPGRADING.md#acunsoftdatatable-laravel-04--05) (re-publish customized views, the user's sort now comes first).
+From 0.4: see [UPGRADING.md](https://github.com/Acunsoft-Yazilim/acun-datatable/blob/main/UPGRADING.md#acunsoftdatatable-laravel-04--05) (re-publish customized views, the user's sort now comes first).
 
 ## Tests
 
