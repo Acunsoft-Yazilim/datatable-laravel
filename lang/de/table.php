@@ -111,7 +111,7 @@ return [
     'file_damaged' => 'Die Datei ist beschädigt.',
     'file_encrypted' => 'Passwortgeschützte Dateien werden nicht unterstützt.',
     'sheet_not_found' => 'Arbeitsblatt „:name“ nicht gefunden.',
-    'export_too_large' => 'Der Export umfasst mehr als :max Zeilen; bitte die Filter einschränken.',
+    'export_too_large' => 'Der Export umfasst mehr als :max Zeilen; grenzen Sie die Filter ein.',
     'select_matching_many' => 'Alle :total+ passenden Einträge auswählen',
     'selected_many' => ':count+ ausgewählt',
 ];

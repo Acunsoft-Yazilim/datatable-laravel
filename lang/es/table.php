@@ -74,7 +74,7 @@ return [
     'import_submit' => 'Importar',
     'import_done' => ':count fila importada.|:count filas importadas.',
     'import_problems' => ':count problema; esa fila no se importó.|:count problemas; esas filas no se importaron.',
-    'import_line' => 'Línea :line',
+    'import_line' => 'Fila :line',
     'import_ignored' => 'Columnas ignoradas: :columns',
     'import_duplicate_column' => 'columna duplicada; se usa la primera',
     'import_missing_column' => 'falta una columna obligatoria',
