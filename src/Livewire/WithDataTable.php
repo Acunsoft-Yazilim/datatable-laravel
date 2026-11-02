@@ -546,9 +546,17 @@ trait WithDataTable
         return QueryApplier::aggregates($this->query(), $this->dataTableQuery(), $this->dataTableColumns());
     }
 
+    /** @var list<Column>|null `columns()` while the view renders, which asks for them many times */
+    private ?array $renderedColumns = null;
+
+    private bool $renderingTable = false;
+
     /** @return list<Column> */
     protected function dataTableColumns(): array
     {
+        if ($this->renderedColumns !== null) {
+            return $this->renderedColumns;
+        }
         $columns = [];
         foreach ($this->columns() as $column) {
             if (! $column instanceof Column) {
@@ -556,8 +564,29 @@ trait WithDataTable
             }
             $columns[] = $column;
         }
+        if ($this->renderingTable) {
+            $this->renderedColumns = $columns;
+        }
 
         return $columns;
+    }
+
+    /**
+     * One `columns()` call per render, however often the view asks: columns
+     * that read options from the database query once. Outside the render
+     * (actions, updates) they are built on every call, so a `columns()` that
+     * depends on component state always sees the current state.
+     */
+    public function renderingWithDataTable(): void
+    {
+        $this->renderingTable = true;
+        $this->renderedColumns = null;
+    }
+
+    public function renderedWithDataTable(): void
+    {
+        $this->renderingTable = false;
+        $this->renderedColumns = null;
     }
 
     /** @return list<array{field: string, direction: 'asc'|'desc'}> */

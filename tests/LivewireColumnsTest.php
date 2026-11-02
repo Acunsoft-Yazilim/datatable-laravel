@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acunsoft\DataTable\Laravel\Tests;
 
 use Acunsoft\DataTable\Laravel\DataTableServiceProvider;
+use Acunsoft\DataTable\Laravel\Tests\Fixtures\CountedColumnsTable;
 use Acunsoft\DataTable\Laravel\Tests\Fixtures\OrdersTable;
 use Livewire\Livewire;
 use Livewire\LivewireServiceProvider;
@@ -67,5 +68,20 @@ final class LivewireColumnsTest extends TestCase
     {
         $table = Livewire::withQueryParams(['hidden' => ['customer', 'nope', 'city']])->test(OrdersTable::class);
         self::assertSame(['Customer', 'Total', 'Active', 'Created', 'Note'], $this->headers($table->html()));
+    }
+
+    public function test_columns_are_built_once_per_render_and_follow_state_changed_by_an_action(): void
+    {
+        CountedColumnsTable::$calls = 0;
+        $table = Livewire::test(CountedColumnsTable::class);
+        self::assertSame(['Customer', 'Total'], $this->headers($table->html()));
+        self::assertSame(2, CountedColumnsTable::$calls); // mount (hidden columns) and the render, not once per use in the view (17 before)
+
+        CountedColumnsTable::$calls = 0;
+        $table->set('sort', 'total:desc')->call('toggleRow', 1);
+        self::assertLessThanOrEqual(4, CountedColumnsTable::$calls); // two requests: a render each, plus the action's own reads
+
+        $table->call('addCity');
+        self::assertSame(['Customer', 'City', 'Total'], $this->headers($table->html()));
     }
 }
