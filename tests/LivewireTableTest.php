@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Acunsoft\DataTable\Laravel\Tests;
 
 use Acunsoft\DataTable\Laravel\DataTableServiceProvider;
+use Acunsoft\DataTable\Laravel\Tests\Fixtures\AliasedOrdersTable;
 use Acunsoft\DataTable\Laravel\Tests\Fixtures\Order;
 use Acunsoft\DataTable\Laravel\Tests\Fixtures\OrdersTable;
 use Livewire\Livewire;
@@ -185,5 +186,15 @@ final class LivewireTableTest extends TestCase
         }
         $this->expectException(\Throwable::class);
         $table->set('allMatching', true);
+    }
+
+    public function test_a_component_overrides_trait_methods_and_calls_them_through_an_alias(): void
+    {
+        $table = Livewire::test(AliasedOrdersTable::class);
+        self::assertMatchesRegularExpression('/<option value="2"\s*>2<\/option>\s*<option value="10"\s*>10<\/option>/', $table->html()); // its option, then the trait's
+        $table
+            ->call('toggleRow', 1)
+            ->assertSet('toggles', 1)
+            ->assertSet('selected', ['1']);
     }
 }
