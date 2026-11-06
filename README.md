@@ -732,10 +732,6 @@ Route::get('/orders/export', function (Request $request) {
 
 ## Import with the import dialog: `TableImport`
 
-> **Not released yet.** The import comes with the next release; until then
-> the browser package `@acunsoft/datatable-import` (its dialog and
-> `acun-datatable-import.min.js`) is not on npm.
-
 The import dialog of `@acunsoft/datatable-import` (file and drag and drop,
 column mapping with a preview, progress, results, error report) talks to your
 back end by the import protocol `acun-import/1`. `TableImport` is that back
